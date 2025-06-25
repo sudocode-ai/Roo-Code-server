@@ -187,11 +187,13 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 			(conversationHistory.clineMessages || conversationHistory.apiMessages)
 		) {
 			const firstMessage = conversationHistory.clineMessages?.[0]
+			// TODO: Make sure this is resolvable from previous tasks.
 			effectiveHistoryItem = {
 				id: taskMetadata?.taskId || crypto.randomUUID(),
 				number: 1,
 				ts: firstMessage?.ts || Date.now(),
 				task: firstMessage?.text || text || "",
+				// TODO: Ensure token usage data is injected properly.
 				tokensIn: 0,
 				tokensOut: 0,
 				totalCost: 0,
@@ -209,13 +211,24 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		}
 
 		if (effectiveHistoryItem) {
+			// Add a small delay to ensure file system operations are complete
+			await new Promise((resolve) => setTimeout(resolve, 100))
 			// Start task with preloaded history
 			await provider.postMessageToWebview({ type: "invoke", invoke: "newChat" })
 			cline = await provider.initClineWithHistoryItem(effectiveHistoryItem)
 
-			// If we have additional text/images to append after loading history
-			if (text || images) {
-				await provider.postMessageToWebview({ type: "invoke", invoke: "sendMessage", text, images })
+			// Wait a moment for the task to initialize and ask for resume
+			await new Promise((resolve) => setTimeout(resolve, 100))
+
+			const currentTask = provider.getCurrentCline()
+			if (currentTask) {
+				if (text || images) {
+					await currentTask.handleWebviewAskResponse("messageResponse", text, images)
+				} else {
+					await currentTask.handleWebviewAskResponse("yesButtonClicked")
+				}
+			} else {
+				console.error("No current task found to resume!")
 			}
 		} else {
 			// Start fresh task
