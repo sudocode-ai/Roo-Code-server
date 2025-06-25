@@ -1,4 +1,4 @@
-import { ClineMessage, ClineSay, TokenUsage } from "@roo-code/types"
+import { ClineAsk, ClineMessage, ClineSay, TokenUsage } from "@roo-code/types"
 import { RooCodeEventName } from "@roo-code/types"
 import type { Content } from "@google/genai"
 
@@ -30,30 +30,37 @@ export class EventTransformer {
 	 * @param message - The Roo-Code message to transform
 	 * @returns StreamEvent with the transformed message content
 	 */
-	public transformMessageEvent(taskId: string, message: ClineMessage): StreamEvent | null {
+	public transformMessageEvent(taskId: string, message: ClineMessage): StreamEvent[] | null {
 		try {
-			const content = this.messageToGenAIContent(message)
-			if (!content || !content.parts || content.parts.length === 0) {
+			const { content, data } = this.messageToGenAIContent(message)
+			if ((!content || content.length === 0) && !data) {
 				return null
 			}
-			return {
+			const streamEvents = content?.map((content) => ({
 				type: "message",
 				content,
+				data,
 				task_id: taskId,
 				event_id: this.generateEventId(),
 				timestamp: Date.now(),
+			}))
+			if (!streamEvents) {
+				return null
 			}
+			return streamEvents
 		} catch (error) {
 			console.error("Error transforming message event:", error)
-			return {
-				type: "error",
-				task_id: taskId,
-				event_id: this.generateEventId(),
-				timestamp: Date.now(),
-				data: {
-					error: `Error transforming message: ${error instanceof Error ? error.message : "Unknown error"}`,
+			return [
+				{
+					type: "error",
+					task_id: taskId,
+					event_id: this.generateEventId(),
+					timestamp: Date.now(),
+					data: {
+						error: `Error transforming message: ${error instanceof Error ? error.message : "Unknown error"}`,
+					},
 				},
-			}
+			]
 		}
 	}
 
@@ -132,15 +139,14 @@ export class EventTransformer {
 	 * Convert a ClineMessage to Google GenAI Content format
 	 * @private
 	 */
-	private messageToGenAIContent(message: ClineMessage): Content | null {
+	private messageToGenAIContent(message: ClineMessage): { content?: Content[]; data?: any } {
 		switch (message.type) {
 			case "say":
 				return this.transformSayMessage(message)
-			// TODO: Ideally there are no ask messages in full auto mode.
 			case "ask":
-				return null
+				return this.transformAskMessage(message)
 			default:
-				return null
+				return {}
 		}
 	}
 
@@ -159,74 +165,109 @@ export class EventTransformer {
 	 * # TODO: Represent tool calls.
 	 * @private
 	 */
-	private transformSayMessage(message: ClineMessage): Content | null {
+	private transformSayMessage(message: ClineMessage): { content?: Content[]; data?: any } {
 		const say = message.say as ClineSay
 
+		// TODO: Make sure to handle all say messages.
 		switch (say) {
+			// Ignore API request messages.
+			case "api_req_started":
+			case "api_req_finished":
+			case "api_req_retried":
+			case "api_req_retry_delayed":
+			case "api_req_deleted":
+			case "shell_integration_warning":
+			case "checkpoint_saved":
+			case "rooignore_error":
+			case "diff_error":
+				return {}
+
 			case "reasoning":
 				// Agent's internal reasoning/thoughts - map to thought
 				if (message.text) {
 					return {
-						role: "model",
-						parts: [{ text: message.text, thought: true }],
+						content: [
+							{
+								role: "model",
+								parts: [{ text: message.text, thought: true }],
+							},
+						],
+						data: {
+							say: say,
+						},
 					}
 				}
-				return null
+				return {}
 
 			case "text":
 				// General text response from agent
 				if (message.text) {
 					return {
-						role: "model",
-						parts: [{ text: message.text }],
+						content: [
+							{
+								role: "model",
+								parts: [{ text: message.text }],
+							},
+						],
+						data: {
+							say: say,
+						},
 					}
 				}
-				return null
-
-			// Ignore API request messages.
-			case "api_req_started":
-			case "api_req_finished":
-				return null
+				return {}
 
 			case "command_output": {
 				// Command execution result - map to functionResponse
 				// Use message timestamp as fallback ID for correlation
 				const functionCallId = message.ts.toString()
 				return {
-					role: "user",
-					parts: [
+					content: [
 						{
-							functionResponse: {
-								// TODO: Verify tool name.
-								name: "execute_command",
-								response: {
-									output: message.text,
+							role: "user",
+							parts: [
+								{
+									functionResponse: {
+										// TODO: Verify tool name.
+										name: "execute_command",
+										response: {
+											output: message.text,
+										},
+										id: functionCallId,
+									},
 								},
-								id: functionCallId,
-							},
+							],
 						},
 					],
+					data: {
+						say: say,
+					},
 				}
 			}
 
 			case "browser_action": {
 				// Browser action initiation - map to functionCall
-				const functionCallId = message.ts.toString()
 				return {
-					role: "model",
-					parts: [
+					content: [
 						{
-							functionCall: {
-								// TODO: Verify tool name.
-								name: "browser_action",
-								args: {
-									action: message.text || "Browser action initiated",
-									...(message.images && message.images.length > 0 && { images: message.images }),
+							role: "model",
+							parts: [
+								{
+									functionCall: {
+										// TODO: Verify tool name.
+										name: "browser_action",
+										args: {
+											action: message.text || "Browser action initiated",
+											...(message.images &&
+												message.images.length > 0 && { images: message.images }),
+										},
+									},
 								},
-								id: functionCallId,
-							},
+							],
 						},
 					],
+					data: {
+						say: say,
+					},
 				}
 			}
 			case "browser_action_result": {
@@ -240,116 +281,285 @@ export class EventTransformer {
 					browserResponse.screenshots = message.images
 				}
 				return {
-					role: "user",
-					parts: [
+					content: [
 						{
-							functionResponse: {
-								name: "browser_action",
-								response: browserResponse,
-								// id: functionCallId,
-							},
+							role: "user",
+							parts: [
+								{
+									functionResponse: {
+										name: "browser_action",
+										response: browserResponse,
+									},
+								},
+							],
 						},
 					],
+					data: {
+						say: say,
+					},
 				}
 			}
+			// TODO: Properly parse the tool name and id from the message.
 			case "mcp_server_request_started": {
 				// MCP server request initiation - map to functionCall
 				const functionCallId = message.ts.toString()
 				return {
-					role: "model",
-					parts: [
+					content: [
 						{
-							functionCall: {
-								name: "mcp_tool",
-								args: {
-									status: "started",
-									details: message.text || "MCP server request initiated",
+							role: "model",
+							parts: [
+								{
+									functionCall: {
+										name: "mcp_tool",
+										args: {
+											status: "started",
+											details: message.text || "MCP server request initiated",
+										},
+										id: functionCallId,
+									},
 								},
-								id: functionCallId,
-							},
+							],
 						},
 					],
+					data: {
+						say: say,
+					},
 				}
 			}
 			case "mcp_server_response": {
 				// MCP server response - map to functionResponse
 				const functionCallId = message.ts.toString()
 				return {
-					role: "user",
-					parts: [
+					content: [
 						{
-							functionResponse: {
-								// TODO: Extract tool name, id, and response.
-								name: "mcp_tool",
-								response: { result: message.text || "" },
-								id: functionCallId,
-							},
+							role: "user",
+							parts: [
+								{
+									functionResponse: {
+										// TODO: Extract tool name, id, and response.
+										name: "mcp_tool",
+										response: { result: message.text || "" },
+										id: functionCallId,
+									},
+								},
+							],
 						},
 					],
+					data: {
+						say: say,
+					},
 				}
 			}
 			case "error": {
 				// Error message - treat as regular text
 				return {
-					role: "user",
-					parts: [{ text: `Error: ${message.text || "Unknown error"}` }],
+					content: [
+						{
+							role: "user",
+							parts: [{ text: `Error: ${message.text || "Unknown error"}` }],
+						},
+					],
+					data: {
+						say: say,
+					},
 				}
 			}
 			case "completion_result":
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || `[${say}]` }],
+						},
+					],
+					data: {
+						say: say,
+					},
+				}
 			case "user_feedback":
 			case "user_feedback_diff":
 				// User interaction messages - treat as regular text
 				if (message.text) {
 					return {
-						role: "user",
-						parts: [{ text: message.text }],
+						content: [
+							{
+								role: "user",
+								parts: [{ text: message.text }],
+							},
+						],
+						data: {
+							say: say,
+						},
 					}
 				}
-				return {
-					role: "user",
-				}
+				return {}
 
 			case "codebase_search_result": {
 				// Search results - map to functionResponse
 				const functionCallId = message.ts.toString()
 				return {
-					role: "user",
-					parts: [
+					content: [
 						{
-							functionResponse: {
-								// TODO: Extract tool name, id, and response.
-								name: "search_codebase",
-								response: {
-									result: message.text || "",
-									reasoning: message.reasoning || null,
+							role: "user",
+							parts: [
+								{
+									functionResponse: {
+										// TODO: Extract tool name, id, and response.
+										name: "search_codebase",
+										response: {
+											result: message.text || "",
+											reasoning: message.reasoning || null,
+										},
+										id: functionCallId,
+									},
 								},
-								id: functionCallId,
-							},
+							],
 						},
 					],
+					data: {
+						say: say,
+					},
 				}
 			}
 
 			case "subtask_result":
 				// Subtask completion - map to functionResponse
 				return {
-					role: "user",
-					parts: [
+					content: [
 						{
-							functionResponse: {
-								// TODO: Extract tool id and response.
-								name: "complete_subtask",
-								response: { result: message.text || "" },
-							},
+							role: "user",
+							parts: [
+								{
+									functionResponse: {
+										// TODO: Extract tool id and response.
+										name: "complete_subtask",
+										response: { result: message.text || "" },
+									},
+								},
+							],
 						},
 					],
+					data: {
+						say: say,
+					},
 				}
 
 			default:
 				// Fallback for unhandled say types - treat as regular text
 				return {
-					role: "model",
-					parts: [{ text: message.text || `[${say}]` }],
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || `[${say}]` }],
+						},
+					],
+					data: {
+						say: say,
+					},
+				}
+		}
+	}
+
+	private transformAskMessage(message: ClineMessage): { content?: Content[]; data?: any } {
+		const ask = message.ask as ClineAsk
+
+		// TODO: Handle other ask types.
+		switch (ask) {
+			case "tool": {
+				try {
+					if (message.text) {
+						const toolData = JSON.parse(message.text)
+						const toolName = toolData.tool
+						// TODO: Have handlers for each tool type (considering nested structures like batchFiles, etc).
+
+						if (toolData.content !== undefined) {
+							const { tool, content, ...otherArgs } = toolData
+							return {
+								content: [
+									{
+										role: "model",
+										parts: [
+											{
+												functionCall: {
+													name: toolName,
+													args: otherArgs,
+													id: message.ts.toString(),
+												},
+											},
+										],
+									},
+									{
+										role: "user",
+										parts: [
+											{
+												functionResponse: {
+													name: toolName,
+													response: {
+														content: content,
+													},
+													id: message.ts.toString(),
+												},
+											},
+										],
+									},
+								],
+								data: {
+									ask: ask,
+								},
+							}
+						} else {
+							const { tool, ...args } = toolData
+
+							return {
+								content: [
+									{
+										role: "model",
+										parts: [
+											{
+												functionCall: {
+													name: toolName,
+													args: args,
+													id: message.ts.toString(),
+												},
+											},
+										],
+									},
+								],
+								data: {
+									ask: ask,
+								},
+							}
+						}
+					}
+				} catch (error) {
+					console.error("Error parsing tool message:", error)
+					return {
+						content: [
+							{
+								role: "model",
+								parts: [{ text: message.text || `[${ask}]` }],
+							},
+						],
+					}
+				}
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: `[${ask}]` }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+			}
+			default:
+				return {
+					data: {
+						ask: ask,
+						message: message.text,
+					},
 				}
 		}
 	}
