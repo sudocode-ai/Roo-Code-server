@@ -1,8 +1,7 @@
-import express, { Request, Response, NextFunction } from "express"
+import express from "express"
 import { createServer, Server as HttpServer } from "http"
 import { WebSocketServer, WebSocket } from "ws"
 import { EventEmitter } from "events"
-import { createServer as createNetServer } from "net"
 import { StreamEvent } from "./EventTransformer"
 
 /**
@@ -268,7 +267,6 @@ export class StreamingServer extends EventEmitter {
 					this.config.port = portToTry
 					console.log(`[Streaming Server] Server started on port ${portToTry}`)
 					console.log(`[Streaming Server] WebSocket endpoint: ws://localhost:${portToTry}`)
-					console.log(`[Streaming Server] Status endpoint: http://localhost:${portToTry}/api/status`)
 					this.emit("started")
 					server.removeListener("error", onError)
 					resolve()

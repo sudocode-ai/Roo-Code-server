@@ -19,7 +19,7 @@ import {
 	TaskEvent,
 } from "@roo-code/types"
 import { IpcServer } from "@roo-code/ipc"
-import { StreamingServer, StreamingServerConfig, EventTransformer } from "../services/streaming"
+import { StreamingServer, StreamingServerConfig, EventTransformer, StreamEvent } from "../services/streaming"
 
 import { Package } from "../shared/package"
 import { getWorkspacePath } from "../utils/path"
@@ -663,16 +663,16 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		}
 
 		try {
-			let streamEvent
+			let streamEvents: StreamEvent[] | null = null
 			if (eventName === RooCodeEventName.Message && args[0] && args[0].taskId) {
 				const messageData = args[0]
 				const { taskId, ...clineMessage } = messageData
-				streamEvent = this.eventTransformer.transformMessageEvent(taskId, clineMessage.message)
+				streamEvents = this.eventTransformer.transformMessageEvent(taskId, clineMessage.message)
 			} else {
-				streamEvent = this.eventTransformer.transformTaskEvent(eventName, ...args)
+				streamEvents = [this.eventTransformer.transformTaskEvent(eventName, ...args)]
 			}
-			if (streamEvent) {
-				this.streamingServer.broadcastEvent(streamEvent)
+			if (streamEvents && streamEvents.length > 0) {
+				streamEvents.forEach((event) => this.streamingServer?.broadcastEvent(event))
 			}
 		} catch (error) {
 			console.error("Failed to broadcast event to streaming server:", error)
