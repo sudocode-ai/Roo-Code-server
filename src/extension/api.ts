@@ -3,6 +3,7 @@ import * as vscode from "vscode"
 import fs from "fs/promises"
 import * as path from "path"
 import * as os from "os"
+import * as crypto from "crypto"
 
 import {
 	RooCodeAPI,
@@ -18,6 +19,7 @@ import {
 	TaskEvent,
 } from "@roo-code/types"
 import { IpcServer } from "@roo-code/ipc"
+import { StreamingServer, StreamingServerConfig, EventTransformer } from "../services/streaming"
 
 import { Package } from "../shared/package"
 import { getWorkspacePath } from "../utils/path"
@@ -32,6 +34,10 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	private readonly taskMap = new Map<string, ClineProvider>()
 	private readonly log: (...args: unknown[]) => void
 	private logfile?: string
+
+	// streaming server integration
+	private streamingServer?: StreamingServer
+	private eventTransformer?: EventTransformer
 
 	constructor(
 		outputChannel: vscode.OutputChannel,
@@ -82,6 +88,13 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 				}
 			})
 		}
+
+		this.eventTransformer = new EventTransformer()
+		// Initialize streaming server asynchronously to avoid blocking extension startup
+		this.initializeProxyServerIfEnabled().catch((error) => {
+			console.error("Failed to initialize streaming server during startup:", error)
+			this.log("[API] Streaming server initialization failed during startup, continuing without streaming")
+		})
 	}
 
 	public override emit<K extends keyof RooCodeEvents>(
@@ -90,6 +103,10 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	) {
 		const data = { eventName: eventName as RooCodeEventName, payload: args } as TaskEvent
 		this.ipc?.broadcast({ type: IpcMessageType.TaskEvent, origin: IpcOrigin.Server, data })
+
+		// Broadcast to streaming server if available
+		this.broadcastToStreamingServer(eventName as RooCodeEventName, ...args)
+
 		return super.emit(eventName, ...args)
 	}
 
@@ -98,11 +115,23 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		text,
 		images,
 		newTab,
+		historyItem,
+		conversationHistory,
+		taskMetadata,
 	}: {
 		configuration: RooCodeSettings
 		text?: string
 		images?: string[]
 		newTab?: boolean
+		historyItem?: any // Existing HistoryItem object
+		conversationHistory?: {
+			clineMessages?: any[]
+			apiMessages?: any[]
+		}
+		taskMetadata?: {
+			taskId?: string
+			workspace?: string
+		}
 	}) {
 		let provider: ClineProvider
 
@@ -147,17 +176,91 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		await provider.removeClineFromStack()
 		await provider.postStateToWebview()
 		await provider.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
-		await provider.postMessageToWebview({ type: "invoke", invoke: "newChat", text, images })
 
-		const cline = await provider.initClineWithTask(text, images, undefined, {
-			consecutiveMistakeLimit: Number.MAX_SAFE_INTEGER,
-		})
+		let cline: any
+		let effectiveHistoryItem = historyItem
+
+		// If conversationHistory is provided, create a synthetic historyItem
+		if (
+			!effectiveHistoryItem &&
+			conversationHistory &&
+			(conversationHistory.clineMessages || conversationHistory.apiMessages)
+		) {
+			const firstMessage = conversationHistory.clineMessages?.[0]
+			effectiveHistoryItem = {
+				id: taskMetadata?.taskId || crypto.randomUUID(),
+				number: 1,
+				ts: firstMessage?.ts || Date.now(),
+				task: firstMessage?.text || text || "",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+				workspace: taskMetadata?.workspace || "unknown",
+			}
+
+			// Save the history to disk so it can be loaded by the task
+			if (conversationHistory.clineMessages) {
+				await this.saveConversationHistory(
+					effectiveHistoryItem.id,
+					conversationHistory.clineMessages,
+					conversationHistory.apiMessages,
+				)
+			}
+		}
+
+		if (effectiveHistoryItem) {
+			// Start task with preloaded history
+			await provider.postMessageToWebview({ type: "invoke", invoke: "newChat" })
+			cline = await provider.initClineWithHistoryItem(effectiveHistoryItem)
+
+			// If we have additional text/images to append after loading history
+			if (text || images) {
+				await provider.postMessageToWebview({ type: "invoke", invoke: "sendMessage", text, images })
+			}
+		} else {
+			// Start fresh task
+			await provider.postMessageToWebview({ type: "invoke", invoke: "newChat", text, images })
+			cline = await provider.initClineWithTask(text, images, undefined, {
+				consecutiveMistakeLimit: Number.MAX_SAFE_INTEGER,
+			})
+		}
 
 		if (!cline) {
 			throw new Error("Failed to create task due to policy restrictions")
 		}
 
 		return cline.taskId
+	}
+
+	/**
+	 * Save conversation history to disk for loading by a task
+	 * @private
+	 */
+	private async saveConversationHistory(taskId: string, clineMessages?: any[], apiMessages?: any[]): Promise<void> {
+		try {
+			const { saveTaskMessages } = await import("../core/task-persistence/taskMessages")
+			const { saveApiMessages } = await import("../core/task-persistence/apiMessages")
+			const globalStoragePath = this.sidebarProvider.context.globalStorageUri.fsPath
+
+			if (clineMessages) {
+				await saveTaskMessages({
+					messages: clineMessages,
+					taskId,
+					globalStoragePath,
+				})
+			}
+
+			if (apiMessages) {
+				await saveApiMessages({
+					messages: apiMessages,
+					taskId,
+					globalStoragePath,
+				})
+			}
+		} catch (error) {
+			console.error("Failed to save conversation history:", error)
+			throw error
+		}
 	}
 
 	public async resumeTask(taskId: string): Promise<void> {
@@ -411,5 +514,180 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 		await this.sidebarProvider.activateProviderProfile({ name })
 		return this.getActiveProfile()
+	}
+
+	// Roo-Code Streaming Server Integration Methods
+
+	/**
+	 * Initialize streaming server if enabled in configuration
+	 * @private
+	 */
+	private async initializeProxyServerIfEnabled(): Promise<void> {
+		try {
+			const config = this.getStreamingServerConfig()
+			if (config.enabled) {
+				await this.initializeStreamingServer(config)
+				await this.startStreamingServer()
+			}
+		} catch (error) {
+			console.error("Failed to initialize streaming server:", error)
+			// Continue without streaming server - don't break core functionality
+		}
+	}
+
+	/**
+	 * Initialize the streaming server with the provided configuration
+	 * @param config streaming server configuration
+	 */
+	public async initializeStreamingServer(config: StreamingServerConfig): Promise<void> {
+		if (this.streamingServer) {
+			await this.stopStreamingServer()
+		}
+
+		this.streamingServer = new StreamingServer({
+			port: config.port,
+			portRange: config.portRange,
+			logging: config.logging,
+			loggingLevel: config.loggingLevel,
+			connectionTimeout: config.connectionTimeout,
+			heartbeatInterval: config.heartbeatInterval,
+		})
+
+		// Set up the task command handler for WebSocket clients
+		this.streamingServer.setTaskCommandHandler(this.handleWebSocketTaskCommand.bind(this))
+	}
+
+	/**
+	 * Handle task commands from WebSocket clients
+	 */
+	private async handleWebSocketTaskCommand(commandName: string, data: any): Promise<void> {
+		this.log(`[API] WebSocket TaskCommand: ${commandName} -> ${JSON.stringify(data)}`)
+
+		switch (commandName) {
+			case TaskCommandName.StartNewTask:
+				this.log(`[API] WebSocket StartNewTask -> ${data.text}, ${JSON.stringify(data.configuration)}`)
+				await this.startNewTask(data)
+				break
+			case TaskCommandName.CancelTask:
+				this.log(`[API] WebSocket CancelTask -> ${data}`)
+				await this.cancelTask(data)
+				break
+			case TaskCommandName.CloseTask:
+				this.log(`[API] WebSocket CloseTask -> ${data}`)
+				await vscode.commands.executeCommand("workbench.action.files.saveFiles")
+				await vscode.commands.executeCommand("workbench.action.closeWindow")
+				break
+			default:
+				throw new Error(`Unknown task command: ${commandName}`)
+		}
+	}
+
+	/**
+	 * Start the streaming streaming server
+	 * @returns Promise that resolves when server is started
+	 */
+	public async startStreamingServer(): Promise<void> {
+		if (!this.streamingServer) {
+			throw new Error("streaming server not initialized. Call initializeStreamingServer first.")
+		}
+
+		try {
+			await this.streamingServer.start()
+			console.log("streaming server started successfully")
+			this.log("[API] streaming server started successfully")
+		} catch (error) {
+			console.error("Failed to start streaming server:", error)
+			throw error
+		}
+	}
+
+	/**
+	 * Stop the streaming streaming server
+	 * @returns Promise that resolves when server is stopped
+	 */
+	public async stopStreamingServer(): Promise<void> {
+		if (this.streamingServer) {
+			try {
+				await this.streamingServer.stop()
+				this.log("[API] streaming server stopped successfully")
+			} catch (error) {
+				console.error("Failed to stop streaming server:", error)
+				throw error
+			} finally {
+				this.streamingServer = undefined
+			}
+		}
+	}
+
+	/**
+	 * Read streaming server configuration from VSCode workspace settings
+	 * @returns streaming server configuration
+	 */
+	public getStreamingServerConfig(): StreamingServerConfig {
+		try {
+			const config = vscode.workspace.getConfiguration("roo-cline.streaming")
+
+			// TODO: Support CORS.
+			return {
+				enabled: config.get<boolean>("enabled", false),
+				port: config.get<number>("port", 3051),
+				portRange: config.get<{ min: number; max: number }>("portRange", { min: 3050, max: 3100 }),
+				logging: config.get<boolean>("logging.enabled", false),
+				loggingLevel: config.get<"error" | "warn" | "info" | "debug">("logging.level", "info"),
+				connectionTimeout: config.get<number>("connection.timeout", 60000),
+				heartbeatInterval: config.get<number>("connection.heartbeatInterval", 30000),
+			}
+		} catch (error) {
+			console.error("Failed to read streaming server configuration:", error)
+			// Return safe defaults if configuration reading fails
+			return {
+				enabled: false,
+				port: 3051,
+				portRange: { min: 3050, max: 3100 },
+				logging: false,
+				loggingLevel: "info",
+				connectionTimeout: 60000,
+				heartbeatInterval: 30000,
+			}
+		}
+	}
+
+	/**
+	 * Broadcast events to streaming server
+	 * @private
+	 */
+	private async broadcastToStreamingServer(eventName: RooCodeEventName, ...args: any[]): Promise<void> {
+		console.log("broadcasting to streaming server", eventName, args)
+		if (!this.streamingServer || !this.eventTransformer) {
+			return
+		}
+
+		try {
+			let streamEvent
+			if (eventName === RooCodeEventName.Message && args[0] && args[0].taskId) {
+				const messageData = args[0]
+				const { taskId, ...clineMessage } = messageData
+				streamEvent = this.eventTransformer.transformMessageEvent(taskId, clineMessage.message)
+			} else {
+				streamEvent = this.eventTransformer.transformTaskEvent(eventName, ...args)
+			}
+			if (streamEvent) {
+				this.streamingServer.broadcastEvent(streamEvent)
+			}
+		} catch (error) {
+			console.error("Failed to broadcast event to streaming server:", error)
+		}
+	}
+
+	/**
+	 * Cleanup resources including streaming server
+	 * Call this when the extension is deactivated
+	 */
+	public async dispose(): Promise<void> {
+		try {
+			await this.stopStreamingServer()
+		} catch (error) {
+			console.error("Error during streaming server cleanup:", error)
+		}
 	}
 }

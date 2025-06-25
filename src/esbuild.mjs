@@ -106,24 +106,35 @@ async function main() {
 	/**
 	 * @type {import('esbuild').BuildOptions}
 	 */
+	const serverConfig = {
+		...buildOptions,
+		entryPoints: ["services/streaming/index.ts"],
+		outfile: "dist/server.js",
+		external: [],
+	}
+
+	/**
+	 * @type {import('esbuild').BuildOptions}
+	 */
 	const workerConfig = {
 		...buildOptions,
 		entryPoints: ["workers/countTokens.ts"],
 		outdir: "dist/workers",
 	}
 
-	const [extensionCtx, workerCtx] = await Promise.all([
+	const [extensionCtx, serverCtx, workerCtx] = await Promise.all([
 		esbuild.context(extensionConfig),
+		esbuild.context(serverConfig),
 		esbuild.context(workerConfig),
 	])
 
 	if (watch) {
-		await Promise.all([extensionCtx.watch(), workerCtx.watch()])
+		await Promise.all([extensionCtx.watch(), serverCtx.watch(), workerCtx.watch()])
 		copyLocales(srcDir, distDir)
 		setupLocaleWatcher(srcDir, distDir)
 	} else {
-		await Promise.all([extensionCtx.rebuild(), workerCtx.rebuild()])
-		await Promise.all([extensionCtx.dispose(), workerCtx.dispose()])
+		await Promise.all([extensionCtx.rebuild(), serverCtx.rebuild(), workerCtx.rebuild()])
+		await Promise.all([extensionCtx.dispose(), serverCtx.dispose(), workerCtx.dispose()])
 	}
 }
 

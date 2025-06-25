@@ -1,6 +1,6 @@
 {
 	"name": "roo-cline",
-	"displayName": "%extension.displayName%",
+	"displayName": "Roo Code Server",
 	"description": "%extension.description%",
 	"publisher": "RooVeterinaryInc",
 	"version": "3.23.19",
@@ -14,7 +14,7 @@
 		"node": "20.19.2"
 	},
 	"author": {
-		"name": "Roo Code"
+		"name": "Roo Code Server"
 	},
 	"repository": {
 		"type": "git",
@@ -379,8 +379,8 @@
 				},
 				"roo-cline.enableCodeActions": {
 					"type": "boolean",
-					"default": true,
-					"description": "%settings.enableCodeActions.description%"
+					"default": false,
+					"description": "%settings.rooCodeCloudEnabled.description%"
 				},
 				"roo-cline.autoImportSettingsPath": {
 					"type": "string",
@@ -391,6 +391,73 @@
 					"type": "boolean",
 					"default": true,
 					"description": "%settings.useAgentRules.description%"
+				},
+				"roo-cline.streaming.connection.heartbeatInterval": {
+					"type": "number",
+					"default": 30000,
+					"minimum": 5000,
+					"maximum": 300000,
+					"description": "WebSocket heartbeat interval in milliseconds"
+				},
+				"roo-cline.streaming.connection.timeout": {
+					"type": "number",
+					"default": 60000,
+					"minimum": 10000,
+					"maximum": 600000,
+					"description": "Connection timeout in milliseconds"
+				},
+				"roo-cline.streaming.logging.enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable detailed logging for streaming server operations"
+				},
+				"roo-cline.streaming.logging.level": {
+					"type": "string",
+					"enum": [
+						"error",
+						"warn",
+						"info",
+						"debug"
+					],
+					"default": "info",
+					"description": "Logging level for streaming server"
+				},
+				"roo-cline.streaming.enabled": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Enable the streaming event streaming server.",
+					"scope": "application"
+				},
+				"roo-cline.streaming.port": {
+					"type": "number",
+					"default": 3051,
+					"markdownDescription": "Preferred port for the streaming event streaming server.",
+					"scope": "application"
+				},
+				"roo-cline.streaming.portRange": {
+					"type": "object",
+					"default": {
+						"min": 3050,
+						"max": 3100
+					},
+					"properties": {
+						"min": {
+							"type": "number",
+							"description": "Minimum port number to try"
+						},
+						"max": {
+							"type": "number",
+							"description": "Maximum port number to try"
+						}
+					},
+					"markdownDescription": "Port range to search for available ports if the preferred port is busy.",
+					"scope": "application"
+				},
+				"roo-cline.streaming.host": {
+					"type": "string",
+					"default": "localhost",
+					"markdownDescription": "Host for the streaming event streaming server.",
+					"scope": "application"
 				}
 			}
 		}
@@ -480,7 +547,9 @@
 		"web-tree-sitter": "^0.25.6",
 		"workerpool": "^9.2.0",
 		"yaml": "^2.8.0",
-		"zod": "^3.25.61"
+		"zod": "^3.25.61",
+		"express": "^4.18.2",
+		"ws": "^8.14.2"
 	},
 	"devDependencies": {
 		"@roo-code/build": "workspace:^",
@@ -516,6 +585,8 @@
 		"tsx": "^4.19.3",
 		"typescript": "5.8.3",
 		"vitest": "^3.2.3",
-		"zod-to-ts": "^1.2.0"
+		"zod-to-ts": "^1.2.0",
+		"@types/express": "^4.17.17",
+		"@types/ws": "^8.5.5"
 	}
 }
