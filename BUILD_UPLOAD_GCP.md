@@ -5,7 +5,7 @@
 
 ```bash
 gcloud artifacts generic upload \
-    --source bin/roo-cline-server-[VERSION].vsix \
+    --source bin/roo-cline-[VERSION].vsix \
     --repository=roo-code-server \
     --location=[LOCATION] \
     --project=[PROJECT] \
