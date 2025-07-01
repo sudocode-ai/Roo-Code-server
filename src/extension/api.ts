@@ -670,7 +670,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	 * @private
 	 */
 	private async broadcastToStreamingServer(eventName: RooCodeEventName, ...args: any[]): Promise<void> {
-		console.log("broadcasting to streaming server", eventName, args)
+		console.log("broadcasting from streaming server on port: ", this.streamingServer?.port, eventName, args)
 		if (!this.streamingServer || !this.eventTransformer) {
 			return
 		}
