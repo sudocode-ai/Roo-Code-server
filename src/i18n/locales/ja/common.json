@@ -58,6 +58,13 @@
 		"condensed_recently": "コンテキストは最近圧縮されました；この試行をスキップします",
 		"condense_handler_invalid": "コンテキストを圧縮するためのAPIハンドラーが無効です",
 		"condense_context_grew": "圧縮中にコンテキストサイズが増加しました；この試行をスキップします",
+		"url_timeout": "ウェブサイトの読み込みがタイムアウトしました。接続が遅い、ウェブサイトが重い、または一時的に利用できない可能性があります。後でもう一度試すか、URLが正しいか確認してください。",
+		"url_not_found": "ウェブサイトのアドレスが見つかりませんでした。URLが正しいか確認してもう一度試してください。",
+		"no_internet": "インターネット接続がありません。ネットワーク接続を確認してもう一度試してください。",
+		"url_forbidden": "このウェブサイトへのアクセスが禁止されています。サイトが自動アクセスをブロックしているか、認証が必要な可能性があります。",
+		"url_page_not_found": "ページが見つかりませんでした。URLが正しいか確認してください。",
+		"url_fetch_failed": "URLコンテンツの取得に失敗しました：{{error}}",
+		"url_fetch_error_with_url": "{{url}} のコンテンツ取得エラー：{{error}}",
 		"share_task_failed": "タスクの共有に失敗しました",
 		"share_no_active_task": "共有するアクティブなタスクがありません",
 		"share_auth_required": "認証が必要です。タスクを共有するにはサインインしてください。",
@@ -73,7 +80,8 @@
 	},
 	"warnings": {
 		"no_terminal_content": "選択されたターミナルコンテンツがありません",
-		"missing_task_files": "このタスクのファイルが見つかりません。タスクリストから削除しますか？"
+		"missing_task_files": "このタスクのファイルが見つかりません。タスクリストから削除しますか？",
+		"auto_import_failed": "RooCode設定の自動インポートに失敗しました：{{error}}"
 	},
 	"info": {
 		"no_changes": "変更は見つかりませんでした。",
@@ -82,6 +90,7 @@
 		"custom_storage_path_set": "カスタムストレージパスが設定されました：{{path}}",
 		"default_storage_path": "デフォルトのストレージパスに戻りました",
 		"settings_imported": "設定が正常にインポートされました。",
+		"auto_import_success": "RooCode設定が{{filename}}から自動インポートされました",
 		"share_link_copied": "共有リンクがクリップボードにコピーされました",
 		"image_copied_to_clipboard": "画像データURIがクリップボードにコピーされました",
 		"image_saved": "画像を{{path}}に保存しました",
@@ -97,7 +106,9 @@
 	},
 	"tasks": {
 		"canceled": "タスクエラー：ユーザーによって停止およびキャンセルされました。",
-		"deleted": "タスク失敗：ユーザーによって停止および削除されました。"
+		"deleted": "タスク失敗：ユーザーによって停止および削除されました。",
+		"incomplete": "タスク #{{taskNumber}} (未完了)",
+		"no_messages": "タスク #{{taskNumber}} (メッセージなし)"
 	},
 	"storage": {
 		"prompt_custom_path": "会話履歴のカスタムストレージパスを入力してください。デフォルトの場所を使用する場合は空のままにしてください",
@@ -118,6 +129,18 @@
 				"description": "Claude Code CLI へのオプションのパス。設定されていない場合は、デフォルトで「claude」になります。",
 				"placeholder": "デフォルト: claude"
 			}
+		}
+	},
+	"customModes": {
+		"errors": {
+			"yamlParseError": ".roomodes ファイルの {{line}} 行目で無効な YAML です。以下を確認してください：\n• 正しいインデント（タブではなくスペースを使用）\n• 引用符と括弧の対応\n• 有効な YAML 構文",
+			"schemaValidationError": ".roomodes のカスタムモード形式が無効です：\n{{issues}}",
+			"invalidFormat": "カスタムモード形式が無効です。設定が正しい YAML 形式に従っていることを確認してください。",
+			"updateFailed": "カスタムモードの更新に失敗しました：{{error}}",
+			"deleteFailed": "カスタムモードの削除に失敗しました：{{error}}",
+			"resetFailed": "カスタムモードのリセットに失敗しました：{{error}}",
+			"modeNotFound": "書き込みエラー：モードが見つかりません",
+			"noWorkspaceForProject": "プロジェクト固有モード用のワークスペースフォルダーが見つかりません"
 		}
 	},
 	"mdm": {

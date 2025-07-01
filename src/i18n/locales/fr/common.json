@@ -58,6 +58,13 @@
 		"condensed_recently": "Le contexte a été condensé récemment ; cette tentative est ignorée",
 		"condense_handler_invalid": "Le gestionnaire d'API pour condenser le contexte est invalide",
 		"condense_context_grew": "La taille du contexte a augmenté pendant la condensation ; cette tentative est ignorée",
+		"url_timeout": "Le site web a pris trop de temps à charger (timeout). Cela pourrait être dû à une connexion lente, un site web lourd ou temporairement indisponible. Tu peux réessayer plus tard ou vérifier si l'URL est correcte.",
+		"url_not_found": "L'adresse du site web n'a pas pu être trouvée. Vérifie si l'URL est correcte et réessaie.",
+		"no_internet": "Pas de connexion internet. Vérifie ta connexion réseau et réessaie.",
+		"url_forbidden": "L'accès à ce site web est interdit. Le site peut bloquer l'accès automatisé ou nécessiter une authentification.",
+		"url_page_not_found": "La page n'a pas été trouvée. Vérifie si l'URL est correcte.",
+		"url_fetch_failed": "Échec de récupération du contenu de l'URL : {{error}}",
+		"url_fetch_error_with_url": "Erreur lors de la récupération du contenu pour {{url}} : {{error}}",
 		"share_task_failed": "Échec du partage de la tâche. Veuillez réessayer.",
 		"share_no_active_task": "Aucune tâche active à partager",
 		"share_auth_required": "Authentification requise. Veuillez vous connecter pour partager des tâches.",
@@ -73,7 +80,8 @@
 	},
 	"warnings": {
 		"no_terminal_content": "Aucun contenu de terminal sélectionné",
-		"missing_task_files": "Les fichiers de cette tâche sont introuvables. Souhaitez-vous la supprimer de la liste des tâches ?"
+		"missing_task_files": "Les fichiers de cette tâche sont introuvables. Souhaitez-vous la supprimer de la liste des tâches ?",
+		"auto_import_failed": "Échec de l'importation automatique des paramètres RooCode : {{error}}"
 	},
 	"info": {
 		"no_changes": "Aucun changement trouvé.",
@@ -82,6 +90,7 @@
 		"custom_storage_path_set": "Chemin de stockage personnalisé défini : {{path}}",
 		"default_storage_path": "Retour au chemin de stockage par défaut",
 		"settings_imported": "Paramètres importés avec succès.",
+		"auto_import_success": "Paramètres RooCode importés automatiquement depuis {{filename}}",
 		"share_link_copied": "Lien de partage copié dans le presse-papiers",
 		"image_copied_to_clipboard": "URI de données d'image copiée dans le presse-papiers",
 		"image_saved": "Image enregistrée dans {{path}}",
@@ -97,7 +106,9 @@
 	},
 	"tasks": {
 		"canceled": "Erreur de tâche : Elle a été arrêtée et annulée par l'utilisateur.",
-		"deleted": "Échec de la tâche : Elle a été arrêtée et supprimée par l'utilisateur."
+		"deleted": "Échec de la tâche : Elle a été arrêtée et supprimée par l'utilisateur.",
+		"incomplete": "Tâche #{{taskNumber}} (Incomplète)",
+		"no_messages": "Tâche #{{taskNumber}} (Aucun message)"
 	},
 	"storage": {
 		"prompt_custom_path": "Entrez le chemin de stockage personnalisé pour l'historique des conversations, laissez vide pour utiliser l'emplacement par défaut",
@@ -118,6 +129,18 @@
 				"description": "Chemin optionnel vers votre CLI Claude Code. Par défaut 'claude' si non défini.",
 				"placeholder": "Par défaut : claude"
 			}
+		}
+	},
+	"customModes": {
+		"errors": {
+			"yamlParseError": "YAML invalide dans le fichier .roomodes à la ligne {{line}}. Vérifie :\n• L'indentation correcte (utilise des espaces, pas de tabulations)\n• Les guillemets et crochets correspondants\n• La syntaxe YAML valide",
+			"schemaValidationError": "Format invalide des modes personnalisés dans .roomodes :\n{{issues}}",
+			"invalidFormat": "Format invalide des modes personnalisés. Assure-toi que tes paramètres suivent le format YAML correct.",
+			"updateFailed": "Échec de la mise à jour du mode personnalisé : {{error}}",
+			"deleteFailed": "Échec de la suppression du mode personnalisé : {{error}}",
+			"resetFailed": "Échec de la réinitialisation des modes personnalisés : {{error}}",
+			"modeNotFound": "Erreur d'écriture : Mode non trouvé",
+			"noWorkspaceForProject": "Aucun dossier d'espace de travail trouvé pour le mode spécifique au projet"
 		}
 	},
 	"mdm": {

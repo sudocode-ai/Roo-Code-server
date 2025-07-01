@@ -58,6 +58,13 @@
 		"condensed_recently": "Context is recent gecomprimeerd; deze poging wordt overgeslagen",
 		"condense_handler_invalid": "API-handler voor het comprimeren van context is ongeldig",
 		"condense_context_grew": "Contextgrootte nam toe tijdens comprimeren; deze poging wordt overgeslagen",
+		"url_timeout": "De website deed er te lang over om te laden (timeout). Dit kan komen door een trage verbinding, een zware website of tijdelijke onbeschikbaarheid. Je kunt het later opnieuw proberen of controleren of de URL correct is.",
+		"url_not_found": "Het websiteadres kon niet worden gevonden. Controleer of de URL correct is en probeer opnieuw.",
+		"no_internet": "Geen internetverbinding. Controleer je netwerkverbinding en probeer opnieuw.",
+		"url_forbidden": "Toegang tot deze website is verboden. De site kan geautomatiseerde toegang blokkeren of authenticatie vereisen.",
+		"url_page_not_found": "De pagina werd niet gevonden. Controleer of de URL correct is.",
+		"url_fetch_failed": "Fout bij ophalen van URL-inhoud: {{error}}",
+		"url_fetch_error_with_url": "Fout bij ophalen van inhoud voor {{url}}: {{error}}",
 		"share_task_failed": "Delen van taak mislukt",
 		"share_no_active_task": "Geen actieve taak om te delen",
 		"share_auth_required": "Authenticatie vereist. Log in om taken te delen.",
@@ -73,7 +80,8 @@
 	},
 	"warnings": {
 		"no_terminal_content": "Geen terminalinhoud geselecteerd",
-		"missing_task_files": "De bestanden van deze taak ontbreken. Wil je deze uit de takenlijst verwijderen?"
+		"missing_task_files": "De bestanden van deze taak ontbreken. Wil je deze uit de takenlijst verwijderen?",
+		"auto_import_failed": "Automatisch importeren van RooCode-instellingen mislukt: {{error}}"
 	},
 	"info": {
 		"no_changes": "Geen wijzigingen gevonden.",
@@ -82,6 +90,7 @@
 		"custom_storage_path_set": "Aangepast opslagpad ingesteld: {{path}}",
 		"default_storage_path": "Terug naar standaard opslagpad",
 		"settings_imported": "Instellingen succesvol geïmporteerd.",
+		"auto_import_success": "RooCode-instellingen automatisch geïmporteerd van {{filename}}",
 		"share_link_copied": "Deellink gekopieerd naar klembord",
 		"image_copied_to_clipboard": "Afbeelding data-URI gekopieerd naar klembord",
 		"image_saved": "Afbeelding opgeslagen naar {{path}}",
@@ -97,7 +106,9 @@
 	},
 	"tasks": {
 		"canceled": "Taakfout: gestopt en geannuleerd door gebruiker.",
-		"deleted": "Taakfout: gestopt en verwijderd door gebruiker."
+		"deleted": "Taakfout: gestopt en verwijderd door gebruiker.",
+		"incomplete": "Taak #{{taskNumber}} (Onvolledig)",
+		"no_messages": "Taak #{{taskNumber}} (Geen berichten)"
 	},
 	"storage": {
 		"prompt_custom_path": "Voer een aangepast opslagpad voor gespreksgeschiedenis in, laat leeg voor standaardlocatie",
@@ -118,6 +129,18 @@
 				"description": "Optioneel pad naar je Claude Code CLI. Standaard 'claude' indien niet ingesteld.",
 				"placeholder": "Standaard: claude"
 			}
+		}
+	},
+	"customModes": {
+		"errors": {
+			"yamlParseError": "Ongeldige YAML in .roomodes bestand op regel {{line}}. Controleer:\n• Juiste inspringing (gebruik spaties, geen tabs)\n• Overeenkomende aanhalingstekens en haakjes\n• Geldige YAML syntaxis",
+			"schemaValidationError": "Ongeldig aangepaste modi formaat in .roomodes:\n{{issues}}",
+			"invalidFormat": "Ongeldig aangepaste modi formaat. Zorg ervoor dat je instellingen het juiste YAML formaat volgen.",
+			"updateFailed": "Aangepaste modus bijwerken mislukt: {{error}}",
+			"deleteFailed": "Aangepaste modus verwijderen mislukt: {{error}}",
+			"resetFailed": "Aangepaste modi resetten mislukt: {{error}}",
+			"modeNotFound": "Schrijffout: Modus niet gevonden",
+			"noWorkspaceForProject": "Geen workspace map gevonden voor projectspecifieke modus"
 		}
 	},
 	"mdm": {

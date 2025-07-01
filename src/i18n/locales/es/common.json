@@ -58,6 +58,13 @@
 		"condensed_recently": "El contexto se condensó recientemente; se omite este intento",
 		"condense_handler_invalid": "El manejador de API para condensar el contexto no es válido",
 		"condense_context_grew": "El tamaño del contexto aumentó durante la condensación; se omite este intento",
+		"url_timeout": "El sitio web tardó demasiado en cargar (timeout). Esto podría deberse a una conexión lenta, un sitio web pesado o que esté temporalmente no disponible. Puedes intentarlo más tarde o verificar si la URL es correcta.",
+		"url_not_found": "No se pudo encontrar la dirección del sitio web. Por favor verifica si la URL es correcta e inténtalo de nuevo.",
+		"no_internet": "Sin conexión a internet. Por favor verifica tu conexión de red e inténtalo de nuevo.",
+		"url_forbidden": "El acceso a este sitio web está prohibido. El sitio puede bloquear el acceso automatizado o requerir autenticación.",
+		"url_page_not_found": "La página no fue encontrada. Por favor verifica si la URL es correcta.",
+		"url_fetch_failed": "Error al obtener el contenido de la URL: {{error}}",
+		"url_fetch_error_with_url": "Error al obtener contenido para {{url}}: {{error}}",
 		"share_task_failed": "Error al compartir la tarea. Por favor, inténtalo de nuevo.",
 		"share_no_active_task": "No hay tarea activa para compartir",
 		"share_auth_required": "Se requiere autenticación. Por favor, inicia sesión para compartir tareas.",
@@ -73,7 +80,8 @@
 	},
 	"warnings": {
 		"no_terminal_content": "No hay contenido de terminal seleccionado",
-		"missing_task_files": "Los archivos de esta tarea faltan. ¿Deseas eliminarla de la lista de tareas?"
+		"missing_task_files": "Los archivos de esta tarea faltan. ¿Deseas eliminarla de la lista de tareas?",
+		"auto_import_failed": "Error al importar automáticamente la configuración de RooCode: {{error}}"
 	},
 	"info": {
 		"no_changes": "No se encontraron cambios.",
@@ -82,6 +90,7 @@
 		"custom_storage_path_set": "Ruta de almacenamiento personalizada establecida: {{path}}",
 		"default_storage_path": "Se ha vuelto a usar la ruta de almacenamiento predeterminada",
 		"settings_imported": "Configuración importada correctamente.",
+		"auto_import_success": "Configuración de RooCode importada automáticamente desde {{filename}}",
 		"share_link_copied": "Enlace de compartir copiado al portapapeles",
 		"image_copied_to_clipboard": "URI de datos de imagen copiada al portapapeles",
 		"image_saved": "Imagen guardada en {{path}}",
@@ -97,7 +106,9 @@
 	},
 	"tasks": {
 		"canceled": "Error de tarea: Fue detenida y cancelada por el usuario.",
-		"deleted": "Fallo de tarea: Fue detenida y eliminada por el usuario."
+		"deleted": "Fallo de tarea: Fue detenida y eliminada por el usuario.",
+		"incomplete": "Tarea #{{taskNumber}} (Incompleta)",
+		"no_messages": "Tarea #{{taskNumber}} (Sin mensajes)"
 	},
 	"storage": {
 		"prompt_custom_path": "Ingresa la ruta de almacenamiento personalizada para el historial de conversaciones, déjala vacía para usar la ubicación predeterminada",
@@ -118,6 +129,18 @@
 				"description": "Ruta opcional a tu CLI de Claude Code. Por defecto 'claude' si no se establece.",
 				"placeholder": "Por defecto: claude"
 			}
+		}
+	},
+	"customModes": {
+		"errors": {
+			"yamlParseError": "YAML inválido en archivo .roomodes en línea {{line}}. Verifica:\n• Indentación correcta (usa espacios, no tabs)\n• Comillas y corchetes coincidentes\n• Sintaxis YAML válida",
+			"schemaValidationError": "Formato inválido de modos personalizados en .roomodes:\n{{issues}}",
+			"invalidFormat": "Formato inválido de modos personalizados. Asegúrate de que tu configuración siga el formato YAML correcto.",
+			"updateFailed": "Error al actualizar modo personalizado: {{error}}",
+			"deleteFailed": "Error al eliminar modo personalizado: {{error}}",
+			"resetFailed": "Error al restablecer modos personalizados: {{error}}",
+			"modeNotFound": "Error de escritura: Modo no encontrado",
+			"noWorkspaceForProject": "No se encontró carpeta de espacio de trabajo para modo específico del proyecto"
 		}
 	},
 	"mdm": {
