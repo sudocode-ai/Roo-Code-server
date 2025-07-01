@@ -62,6 +62,7 @@ export class StreamingServer extends EventEmitter {
 	private connections: Map<string, StreamClientConnection> = new Map()
 	private heartbeatInterval?: NodeJS.Timeout
 	private taskCommandHandler?: TaskCommandHandler
+	public port: number
 
 	constructor(config: Partial<StreamingServerConfig> = {}) {
 		super()
@@ -69,6 +70,7 @@ export class StreamingServer extends EventEmitter {
 		this.app = express()
 		this.server = createServer(this.app)
 		this.wss = new WebSocketServer({ server: this.server })
+		this.port = this.config.port
 
 		this.setupWebSocket()
 		this.setupHeartbeat()
@@ -259,12 +261,14 @@ export class StreamingServer extends EventEmitter {
 		return new Promise((resolve, reject) => {
 			const { port, portRange } = this.config
 
+			// TODO: It's possible to connect to a port being used by another websocket. Make sure other extension instances aren't colliding with each other.
 			const tryPort = (portToTry: number) => {
 				const server = this.server
 
 				const onListening = () => {
 					// Update config with the actually used port
 					this.config.port = portToTry
+					this.port = portToTry
 					console.log(`[Streaming Server] Server started on port ${portToTry}`)
 					console.log(`[Streaming Server] WebSocket endpoint: ws://localhost:${portToTry}`)
 					this.emit("started")
