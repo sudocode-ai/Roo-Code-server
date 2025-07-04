@@ -32,6 +32,9 @@ export class EventTransformer {
 	 */
 	public transformMessageEvent(taskId: string, message: ClineMessage): StreamEvent[] | null {
 		try {
+			if (message.partial) {
+				return null
+			}
 			const { content, data } = this.messageToGenAIContent(message)
 			if ((!content || content.length === 0) && !data) {
 				return null
