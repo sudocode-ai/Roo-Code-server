@@ -38,6 +38,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	// streaming server integration
 	private streamingServer?: StreamingServer
 	private eventTransformer?: EventTransformer
+	private readonly instanceId: string
 
 	constructor(
 		outputChannel: vscode.OutputChannel,
@@ -46,6 +47,9 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		enableLogging = false,
 	) {
 		super()
+
+		this.instanceId = `API-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+		console.log(`[${this.instanceId}] Creating new API instance`)
 
 		this.outputChannel = outputChannel
 		this.sidebarProvider = provider
@@ -338,6 +342,9 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 			})
 
 			cline.on("message", async (message) => {
+				console.log(
+					`[${this.instanceId}] received message from Task-${cline.taskId}: action=${message.action}, ts=${message.message.ts}, partial=${message.message.partial}, type=${message.message.type}`,
+				)
 				this.emit(RooCodeEventName.Message, { taskId: cline.taskId, ...message })
 
 				if (message.message.partial !== true) {
@@ -670,8 +677,17 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	 * @private
 	 */
 	private async broadcastToStreamingServer(eventName: RooCodeEventName, ...args: any[]): Promise<void> {
-		console.log("broadcasting from streaming server on port: ", this.streamingServer?.port, eventName, args)
+		if (eventName === RooCodeEventName.Message && args[0]) {
+			const messageData = args[0]
+			console.log(
+				`[${this.instanceId}-BROADCAST] Processing ${eventName} for Task-${messageData.taskId}: action=${messageData.action}, ts=${messageData.message?.ts}, partial=${messageData.message?.partial}`,
+			)
+		} else {
+			console.log(`[${this.instanceId}-BROADCAST] Processing ${eventName}:`, args)
+		}
+
 		if (!this.streamingServer || !this.eventTransformer) {
+			console.log(`[${this.instanceId}-BROADCAST] Skipping - streaming server not available`)
 			return
 		}
 
@@ -680,12 +696,25 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 			if (eventName === RooCodeEventName.Message && args[0] && args[0].taskId) {
 				const messageData = args[0]
 				const { taskId, ...clineMessage } = messageData
+				console.log(
+					`[${this.instanceId}-BROADCAST] Calling transformMessageEvent for Task-${taskId}, message ts=${clineMessage.message?.ts}`,
+				)
 				streamEvents = this.eventTransformer.transformMessageEvent(taskId, clineMessage.message)
 			} else {
 				streamEvents = [this.eventTransformer.transformTaskEvent(eventName, ...args)]
 			}
 			if (streamEvents && streamEvents.length > 0) {
-				streamEvents.forEach((event) => this.streamingServer?.broadcastEvent(event))
+				console.log(
+					`[${this.instanceId}-BROADCAST] Broadcasting ${streamEvents.length} events to WebSocket clients`,
+				)
+				streamEvents.forEach((event, index) => {
+					console.log(
+						`[${this.instanceId}-BROADCAST] Event ${index}: type=${event.type}, event_id=${event.event_id}, task_id=${event.task_id}`,
+					)
+					this.streamingServer?.broadcastEvent(event)
+				})
+			} else {
+				console.log(`[${this.instanceId}-BROADCAST] No events to broadcast (streamEvents was null or empty)`)
 			}
 		} catch (error) {
 			console.error("Failed to broadcast event to streaming server:", error)

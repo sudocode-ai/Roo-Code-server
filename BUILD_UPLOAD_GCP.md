@@ -12,3 +12,13 @@ gcloud artifacts generic upload \
     --package=roo-code-server-extension \
     --version=[VERSION]
 ```
+
+```bash
+gcloud artifacts generic upload \
+    --source bin/roo-cline-3.23.19.vsix \
+    --repository=roo-code-server \
+    --location=us-west1 \
+    --project=sudocode-staging \
+    --package=roo-code-server-extension \
+    --version=3.23.19
+```
