@@ -360,6 +360,9 @@ export class Task extends EventEmitter<ClineEvents> {
 	}
 
 	private async addToClineMessages(message: ClineMessage) {
+		console.log(
+			`[addToClineMessages] Task-${this.taskId}: ts=${message.ts}, partial=${message.partial}, type=${message.type}, textLength=${message.text?.length || 0}`,
+		)
 		this.clineMessages.push(message)
 		const provider = this.providerRef.deref()
 		await provider?.postStateToWebview()
@@ -384,11 +387,10 @@ export class Task extends EventEmitter<ClineEvents> {
 
 	private async updateClineMessage(message: ClineMessage) {
 		console.log(
-			`[TASK-${this.taskId}] updateClineMessage called: ts=${message.ts}, partial=${message.partial}, type=${message.type}, say=${message.say}, textLength=${message.text?.length || 0}`,
+			`[updateClineMessage] Task-${this.taskId}: ts=${message.ts}, partial=${message.partial}, type=${message.type}, textLength=${message.text?.length || 0}`,
 		)
 		const provider = this.providerRef.deref()
 		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
-		console.log(`[TASK-${this.taskId}] emitting "message" event with action="updated", ts=${message.ts}`)
 		this.emit("message", { action: "updated", message })
 
 		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()
