@@ -39,20 +39,14 @@ export class EventTransformer {
 			if ((!content || content.length === 0) && !data) {
 				return null
 			}
-			const streamEvents = content?.map((content) => {
-				const event = {
-					type: "message",
-					content,
-					data,
-					task_id: taskId,
-					event_id: this.generateEventId(),
-					timestamp: Date.now(),
-				}
-				console.log(
-					`[EventTransformer] Generated event: event_id=${event.event_id}, task_id=${taskId}, message.ts=${message.ts}, partial=${message.partial}`,
-				)
-				return event
-			})
+			const streamEvents = content?.map((content) => ({
+				type: "message",
+				content,
+				data,
+				task_id: taskId,
+				event_id: this.generateEventId(),
+				timestamp: Date.now(),
+			}))
 			if (!streamEvents) {
 				return null
 			}

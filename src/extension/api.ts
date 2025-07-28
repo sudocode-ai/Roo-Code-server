@@ -337,13 +337,11 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		provider.on("clineCreated", (cline) => {
 			// Check if we already have listeners registered for this task
 			if (this.registeredTaskListeners.has(cline.taskId)) {
-				console.log(`[API] Skipping duplicate listener registration for Task-${cline.taskId}`)
 				return
 			}
 
 			// Mark this task as having listeners registered
 			this.registeredTaskListeners.add(cline.taskId)
-			console.log(`[API] Registering listeners for Task-${cline.taskId}`)
 
 			cline.on("taskStarted", async () => {
 				this.emit(RooCodeEventName.TaskStarted, cline.taskId)
@@ -352,10 +350,6 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 			})
 
 			cline.on("message", async (message) => {
-				const listenerCount = cline.listenerCount("message")
-				console.log(
-					`[API-LISTENER] Task-${cline.taskId} has ${listenerCount} message listeners: action=${message.action}, ts=${message.message.ts}, partial=${message.message.partial}, type=${message.message.type}`,
-				)
 				this.emit(RooCodeEventName.Message, { taskId: cline.taskId, ...message })
 
 				if (message.message.partial !== true) {
@@ -690,12 +684,6 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	 * @private
 	 */
 	private async broadcastToStreamingServer(eventName: RooCodeEventName, ...args: any[]): Promise<void> {
-		if (eventName === RooCodeEventName.Message && args[0]) {
-			const messageData = args[0]
-			console.log(
-				`[BROADCAST-CALLED] Processing: action=${messageData.action}, ts=${messageData.message?.ts}, partial=${messageData.message?.partial}`,
-			)
-		}
 		if (!this.streamingServer || !this.eventTransformer) {
 			return
 		}
