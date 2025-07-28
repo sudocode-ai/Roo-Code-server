@@ -65,6 +65,14 @@ export async function presentAssistantMessage(cline: Task) {
 	cline.presentAssistantMessageLocked = true
 	cline.presentAssistantMessageHasPendingUpdates = false
 
+	// Log the content structure to understand what blocks exist
+	console.log(
+		`[presentAssistantMessage] Task-${cline.taskId}: Processing index ${cline.currentStreamingContentIndex} of ${cline.assistantMessageContent.length} blocks`,
+	)
+	console.log(
+		`[presentAssistantMessage] Content structure: ${cline.assistantMessageContent.map((block, i) => `${i}:${block.type}${block.partial ? "(partial)" : ""}`).join(", ")}`,
+	)
+
 	if (cline.currentStreamingContentIndex >= cline.assistantMessageContent.length) {
 		// This may happen if the last content block was completed before
 		// streaming could finish. If streaming is finished, and we're out of
@@ -147,6 +155,9 @@ export async function presentAssistantMessage(cline: Task) {
 				}
 			}
 
+			console.log(
+				`[presentAssistantMessage] Task-${cline.taskId}: Calling cline.say() for text block ${cline.currentStreamingContentIndex}, partial=${block.partial}, contentLength=${content?.length || 0}`,
+			)
 			await cline.say("text", content, undefined, block.partial)
 			break
 		}
@@ -573,6 +584,9 @@ export async function presentAssistantMessage(cline: Task) {
 		if (cline.currentStreamingContentIndex < cline.assistantMessageContent.length) {
 			// There are already more content blocks to stream, so we'll call
 			// this function ourselves.
+			console.log(
+				`[presentAssistantMessage] Task-${cline.taskId}: Recursing to next block (${cline.currentStreamingContentIndex} -> ${cline.currentStreamingContentIndex + 1})`,
+			)
 			presentAssistantMessage(cline)
 			return
 		}
@@ -580,6 +594,7 @@ export async function presentAssistantMessage(cline: Task) {
 
 	// Block is partial, but the read stream may have finished.
 	if (cline.presentAssistantMessageHasPendingUpdates) {
+		console.log(`[presentAssistantMessage] Task-${cline.taskId}: Recursing due to pending updates`)
 		presentAssistantMessage(cline)
 	}
 }

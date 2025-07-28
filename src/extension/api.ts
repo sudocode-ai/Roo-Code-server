@@ -38,6 +38,8 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	// streaming server integration
 	private streamingServer?: StreamingServer
 	private eventTransformer?: EventTransformer
+	private readonly instanceId: string
+	private readonly registeredTaskListeners = new Set<string>()
 
 	constructor(
 		outputChannel: vscode.OutputChannel,
@@ -46,6 +48,8 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		enableLogging = false,
 	) {
 		super()
+
+		this.instanceId = `API-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
 
 		this.outputChannel = outputChannel
 		this.sidebarProvider = provider
@@ -331,6 +335,16 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 	private registerListeners(provider: ClineProvider) {
 		provider.on("clineCreated", (cline) => {
+			// Check if we already have listeners registered for this task
+			if (this.registeredTaskListeners.has(cline.taskId)) {
+				console.log(`[API] Skipping duplicate listener registration for Task-${cline.taskId}`)
+				return
+			}
+
+			// Mark this task as having listeners registered
+			this.registeredTaskListeners.add(cline.taskId)
+			console.log(`[API] Registering listeners for Task-${cline.taskId}`)
+
 			cline.on("taskStarted", async () => {
 				this.emit(RooCodeEventName.TaskStarted, cline.taskId)
 				this.taskMap.set(cline.taskId, provider)
@@ -338,6 +352,10 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 			})
 
 			cline.on("message", async (message) => {
+				const listenerCount = cline.listenerCount("message")
+				console.log(
+					`[API-LISTENER] Task-${cline.taskId} has ${listenerCount} message listeners: action=${message.action}, ts=${message.message.ts}, partial=${message.message.partial}, type=${message.message.type}`,
+				)
 				this.emit(RooCodeEventName.Message, { taskId: cline.taskId, ...message })
 
 				if (message.message.partial !== true) {
@@ -352,6 +370,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 			cline.on("taskAborted", () => {
 				this.emit(RooCodeEventName.TaskAborted, cline.taskId)
 				this.taskMap.delete(cline.taskId)
+				this.registeredTaskListeners.delete(cline.taskId)
 			})
 
 			cline.on("taskCompleted", async (_, tokenUsage, toolUsage) => {
@@ -363,6 +382,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 				this.emit(RooCodeEventName.TaskCompleted, cline.taskId, tokenUsage, toolUsage, { isSubtask: isSubtask })
 				this.taskMap.delete(cline.taskId)
+				this.registeredTaskListeners.delete(cline.taskId)
 
 				await this.fileLog(
 					`[${new Date().toISOString()}] taskCompleted -> ${cline.taskId} | ${JSON.stringify(tokenUsage, null, 2)} | ${JSON.stringify(toolUsage, null, 2)}\n`,
@@ -670,7 +690,12 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	 * @private
 	 */
 	private async broadcastToStreamingServer(eventName: RooCodeEventName, ...args: any[]): Promise<void> {
-		console.log("broadcasting from streaming server on port: ", this.streamingServer?.port, eventName, args)
+		if (eventName === RooCodeEventName.Message && args[0]) {
+			const messageData = args[0]
+			console.log(
+				`[BROADCAST-CALLED] Processing: action=${messageData.action}, ts=${messageData.message?.ts}, partial=${messageData.message?.partial}`,
+			)
+		}
 		if (!this.streamingServer || !this.eventTransformer) {
 			return
 		}
@@ -685,7 +710,9 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 				streamEvents = [this.eventTransformer.transformTaskEvent(eventName, ...args)]
 			}
 			if (streamEvents && streamEvents.length > 0) {
-				streamEvents.forEach((event) => this.streamingServer?.broadcastEvent(event))
+				streamEvents.forEach((event) => {
+					this.streamingServer?.broadcastEvent(event)
+				})
 			}
 		} catch (error) {
 			console.error("Failed to broadcast event to streaming server:", error)

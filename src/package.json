@@ -379,8 +379,8 @@
 				},
 				"roo-cline.enableCodeActions": {
 					"type": "boolean",
-					"default": false,
-					"description": "%settings.rooCodeCloudEnabled.description%"
+					"default": true,
+					"description": "%settings.enableCodeActions.description%"
 				},
 				"roo-cline.autoImportSettingsPath": {
 					"type": "string",

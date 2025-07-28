@@ -360,6 +360,9 @@ export class Task extends EventEmitter<ClineEvents> {
 	}
 
 	private async addToClineMessages(message: ClineMessage) {
+		console.log(
+			`[addToClineMessages] Task-${this.taskId}: ts=${message.ts}, partial=${message.partial}, type=${message.type}, textLength=${message.text?.length || 0}`,
+		)
 		this.clineMessages.push(message)
 		const provider = this.providerRef.deref()
 		await provider?.postStateToWebview()
@@ -383,6 +386,9 @@ export class Task extends EventEmitter<ClineEvents> {
 	}
 
 	private async updateClineMessage(message: ClineMessage) {
+		console.log(
+			`[updateClineMessage] Task-${this.taskId}: ts=${message.ts}, partial=${message.partial}, type=${message.type}, textLength=${message.text?.length || 0}`,
+		)
 		const provider = this.providerRef.deref()
 		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
 		this.emit("message", { action: "updated", message })
