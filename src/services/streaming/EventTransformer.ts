@@ -557,8 +557,173 @@ export class EventTransformer {
 					},
 				}
 			}
-			default:
+
+			// User-facing questions that require interaction
+			case "followup":
+				// Follow-up questions from the agent to clarify requirements
 				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "Follow-up question from agent" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			case "command":
+				// Permission requests to execute commands
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "Permission request to execute command" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			case "resume_task":
+				// Requests to resume a paused/stopped task
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "Resume task request" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			case "resume_completed_task":
+				// Requests to resume a completed task
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "Resume completed task request" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			case "browser_action_launch":
+				// Permission to launch browser for actions
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "Browser action launch request" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			case "use_mcp_server":
+				// Permission to use MCP server
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "MCP server usage request" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			// Status notifications and results
+			case "completion_result":
+				// Task completion notifications
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "Task completion result" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			case "command_output":
+				// Command execution output/results
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "Command execution output" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			// Error states that require user intervention
+			case "api_req_failed":
+				// API request failures
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "API request failed - user intervention needed" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			case "mistake_limit_reached":
+				// When the agent has made too many mistakes
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "Mistake limit reached - user guidance needed" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			case "auto_approval_max_req_reached":
+				// When auto-approval limit is reached
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || "Auto-approval limit reached - manual approval required" }],
+						},
+					],
+					data: {
+						ask: ask,
+					},
+				}
+
+			default:
+				// Fallback for any unhandled ask types - still provide content
+				return {
+					content: [
+						{
+							role: "model",
+							parts: [{ text: message.text || `[${ask}]` }],
+						},
+					],
 					data: {
 						ask: ask,
 						message: message.text,
